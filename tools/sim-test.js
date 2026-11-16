@@ -54,7 +54,7 @@ console.log(`  height range      ${Math.min(...heights).toFixed(1)} .. ${Math.ma
 
 // --- 2. Robot laps ---------------------------------------------------------------
 const physics = await Physics.create(CONFIG);
-addTrackColliders(physics, track.geometry, CONFIG);
+addTrackColliders(physics, track, CONFIG);
 const vehicle = new Vehicle(physics, CONFIG, track.startPose);
 const laps = new LapTracker(path, CONFIG.track.checkpointCount);
 laps.locate(vehicle.position);

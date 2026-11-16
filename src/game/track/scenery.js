@@ -12,25 +12,27 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createRandom } from '../mathUtils.js';
 import { checkerTexture } from './meshes.js';
+import { TIRE, GANTRY } from './obstacles.js';
 
 const TREE_COUNT = 320;
 const ROCK_COUNT = 110;
 
 /**
+ * Purely visual. The solid things (tire stacks, gantry posts) get their
+ * colliders in obstacles.js.
+ *
  * @param {object} track     result of createTrack()
- * @param {Physics} physics  solid scenery gets colliders
- * @param {object} config    the CONFIG object
  */
-export function createScenery(track, physics, config) {
+export function createScenery(track) {
   const group = new THREE.Group();
   group.name = 'scenery';
   const random = createRandom(2024);
 
   group.add(createTrees(track, random));
   group.add(createRocks(track, random));
-  group.add(createTireStacks(track, physics));
+  group.add(createTireStacks(track));
   group.add(createFences(track));
-  group.add(createGantry(track, physics, config));
+  group.add(createGantry(track));
   return group;
 }
 
@@ -139,26 +141,14 @@ function createRocks(track, random) {
 
 // --- Tire stacks ----------------------------------------------------------------------
 
-/** Stacks of tires in front of the wall on the outside of tight corners. */
-function createTireStacks(track, physics) {
-  const { path, geometry: trackGeometry } = track;
-  const TIRE_RADIUS = 0.34;
-  const TIRE_TUBE = 0.15;
-  const TIRES_PER_STACK = 3;
+/** Stacks of tires. Where they stand is decided in obstacles.js. */
+function createTireStacks(track) {
+  const { path, obstacles } = track;
+  const stacks = obstacles.tireStacks;
 
-  // Choose the spots: every 2nd sample where the corner is tight (the hairpin).
-  const stacks = [];
-  for (let i = 0; i < path.count; i += 2) {
-    const s = path.samples[i];
-    if (Math.abs(s.curvature) < 1 / 24) continue;
-    // Left turn (positive curvature) -> the outside is on the right.
-    const side = s.curvature > 0 ? 1 : -1;
-    stacks.push({ sample: s, lateral: side * (trackGeometry.wallDistance - 0.55) });
-  }
-
-  const tire = new THREE.TorusGeometry(TIRE_RADIUS, TIRE_TUBE, 6, 12).rotateX(Math.PI / 2); // lie flat
+  const tire = new THREE.TorusGeometry(TIRE.radius, TIRE.tube, 6, 12).rotateX(Math.PI / 2); // lie flat
   const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 });
-  const mesh = new THREE.InstancedMesh(tire, material, stacks.length * TIRES_PER_STACK);
+  const mesh = new THREE.InstancedMesh(tire, material, stacks.length * TIRE.perStack);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
 
@@ -166,19 +156,14 @@ function createTireStacks(track, physics) {
   const items = [];
   stacks.forEach(({ sample, lateral }, n) => {
     const quaternion = path.orientationAt(sample);
-    for (let k = 0; k < TIRES_PER_STACK; k++) {
+    for (let k = 0; k < TIRE.perStack; k++) {
       items.push({
-        position: path.pointAt(sample, lateral, TIRE_TUBE + k * TIRE_TUBE * 2),
+        position: path.pointAt(sample, lateral, TIRE.tube + k * TIRE.tube * 2),
         quaternion,
         scale: new THREE.Vector3(1, 1, 1),
         color: palette[(n + k) % 2 === 0 ? 0 : 1 + (n % 2)],
       });
     }
-    // One cylinder collider per stack. Slightly bouncy, like real tire walls.
-    const height = TIRES_PER_STACK * TIRE_TUBE * 2;
-    physics.addCylinder(height / 2 + 0.3, TIRE_RADIUS + TIRE_TUBE, path.pointAt(sample, lateral, height / 2), {
-      type: 'obstacle',
-    }, { friction: 0.3, restitution: 0.5 });
   });
   fillInstances(mesh, items);
   return mesh;
@@ -229,11 +214,10 @@ function createFences(track) {
 // --- Start gantry ----------------------------------------------------------------------
 
 /** Two posts and a beam with a banner across the start/finish line. */
-function createGantry(track, physics, config) {
+function createGantry(track) {
   const { path } = track;
-  const sample = path.sample(0);
-  const halfSpan = config.track.roadWidth / 2 + 1.4;
-  const HEIGHT = 6;
+  const { sample, halfSpan } = track.obstacles.gantry;
+  const HEIGHT = GANTRY.height;
   const group = new THREE.Group();
 
   // Build it around the origin, then move the whole group onto the track.
@@ -242,8 +226,6 @@ function createGantry(track, physics, config) {
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, HEIGHT, 10), metal);
     post.position.set(side * halfSpan, HEIGHT / 2, 0);
     group.add(post);
-    // Posts are solid. (+X is "left" in track space, so lateral = -x.)
-    physics.addCylinder(HEIGHT / 2, 0.3, path.pointAt(sample, -side * halfSpan, HEIGHT / 2), { type: 'obstacle' });
   }
   const beam = new THREE.Mesh(new THREE.BoxGeometry(halfSpan * 2 + 0.6, 0.35, 0.5), metal);
   beam.position.y = HEIGHT;

@@ -70,6 +70,14 @@ body {
   opacity: 0.6;
   font-weight: 700;
 }
+/* The AI row once your best lap is faster than the AI's. */
+.lap-row.beaten {
+  color: var(--good);
+  opacity: 1;
+}
+.lap-row.beaten span:last-child::after {
+  content: ' ✓';
+}
 
 .top-right {
   position: absolute;
@@ -140,9 +148,19 @@ body {
   opacity: 0.8;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
+.hint-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.hints input[type='range'] {
+  pointer-events: auto;
+  width: 90px;
+  accent-color: var(--accent);
+}
 .hints button {
   pointer-events: auto; /* …except real buttons */
-  margin-left: 10px;
   font: inherit;
   color: var(--ink);
   background: var(--panel);
@@ -219,6 +237,16 @@ body {
   line-height: 1.5;
   opacity: 0.75;
   margin: 0;
+}
+.start-card .sound-hint {
+  margin: 14px 0 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffc94d;
+}
+.hints button.attention {
+  border-color: #ffc94d;
+  color: #ffc94d;
 }
 .start-card .go {
   font-size: 30px;

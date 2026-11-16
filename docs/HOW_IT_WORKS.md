@@ -8,7 +8,9 @@ A guided tour for someone reading this code for the first time. Each section say
 4. [How the track is generated](#4-how-the-track-is-generated)
 5. [How phone input reaches the game](#5-how-phone-input-reaches-the-game)
 6. [Camera, effects and HUD](#6-camera-effects-and-hud)
-7. [Where to add things](#7-where-to-add-things)
+7. [Sound](#7-sound)
+8. [Ghosts and the AI driver](#8-ghosts-and-the-ai-driver)
+9. [Where to add things](#9-where-to-add-things)
 
 ---
 
@@ -83,10 +85,10 @@ One physics step (`step()` in `main.js`) does this, in order:
 2. `vehicle.preStep()` — turn that into wheel commands and forces
 3. `physics.step()` — Rapier moves everything and resolves collisions
 4. `vehicle.postStep()` — read back speed, which wheels slide, what they touch
-5. `laps.update()`, `effects.step()` — game rules and effects
+5. `laps.update()`, `ghosts.step()`, `effects.step()` — game rules, lap recording and effects
 6. rescue the kart if it is upside down or fell off the world
 
-One rendered frame (`render()`) copies the physics state onto the kart model, moves the camera, updates the HUD and draws.
+One rendered frame (`render()`) copies the physics state onto the kart model, moves the camera and the ghosts, updates the sound and the HUD, and draws.
 
 ---
 
@@ -324,12 +326,60 @@ Keyboard and phone are combined into one object with the same shape. The rest of
 
 ---
 
-## 7. Where to add things
+## 7. Sound
+
+*File: `src/game/audio.js`.*
+
+There are no sound files. Every sound is built live from two raw ingredients: **oscillators** (pure tones) and **noise** (hiss), shaped by **filters** that let only some pitches through. The Web Audio API works like a box of effect pedals: you create nodes and plug them into each other.
+
+| Sound | Made from |
+| --- | --- |
+| Engine | Three oscillators (two buzzy sawtooth waves, one square wave an octave lower) through a low-pass filter |
+| Intake roar (on the gas) | Noise through a band-pass filter |
+| Tyre squeal | Noise squeezed into a narrow, high band |
+| Grass rumble | Very low noise with a fast volume wobble |
+| Wall hit, lap chime | Short one-off tones and noise bursts |
+
+The four continuous sounds **never start or stop**. They play all the time, mostly at zero volume, and each frame `update(vehicle)` only turns their knobs: engine pitch follows speed, engine volume and brightness follow the throttle, squeal volume follows sliding wheels and braking, and so on.
+
+That design is what keeps the sound clean. Clicks happen when a sound wave is cut off abruptly, so nothing is ever cut: every knob change goes through `setTargetAtTime()`, which glides to the new value over a few hundredths of a second, and the short one-off sounds get an "envelope" that begins and ends at silence.
+
+One browser rule to know: a page may not make any sound until the user has clicked or pressed a key on it. `AudioManager` waits for that first gesture before creating the audio system.
+
+---
+
+## 8. Ghosts and the AI driver
+
+*Files: `src/game/ghost/`, `server/ghosts.js`, `training/`.*
+
+### Recording and replay
+
+A ghost is a recording of **where the kart was**: position, rotation and speed, 30 times a second, for one lap. It is deliberately *not* a recording of the driver's inputs. Replaying inputs only works if the physics behaves identically every time, down to the last decimal. Replaying positions always works, and the ghost needs no physics at all.
+
+- **Recording** (`ghost/recording.js`, `GhostRecorder`). Called once per physics step. It notices the lap number changing (the kart crossed the line), and at that moment hands back the finished lap and starts a new one.
+- **Keeping the best** (`ghost/index.js`). If the finished lap is faster than your current ghost, it becomes your ghost and is sent to the server, which writes `ghosts/player.json`. A web page cannot write files itself, hence the small detour through `server/ghosts.js`.
+- **Replay** (`ghost/ghostKart.js`). Each frame the ghost asks its recording "where was I at this lap time?". The recording has a sample every 1/30 s but the screen redraws more often, so `sampleGhost()` finds the two samples around that moment and blends them — the same interpolation idea as in the game loop.
+
+The ghost kart is the normal kart model repainted with one transparent material. It has no physics body, which is why you can drive straight through it.
+
+### The AI ghost
+
+`ghosts/ai.json` is an ordinary ghost file. The game treats it exactly like yours; it has no idea a neural network drove it. That network was trained offline in `training/`:
+
+1. `training/kart-env.js` runs the game's real physics without graphics and turns it into a *learning environment*: it reports what the driver "sees" (speed, distance to walls, the road ahead), accepts steering/gas/brake, and gives a **reward** for progress along the track, minus penalties for grass and walls.
+2. `training/train.py` runs eight copies of that in parallel and uses the PPO algorithm to adjust the network towards whatever earned more reward. After a few million steps it laps faster than the simple robot in `tools/sim-test.js`.
+3. `training/export_ghost.py` lets the trained network drive, recorded by the very same `GhostRecorder` the game uses, and writes its best lap to `ghosts/ai.json`.
+
+Because step 3 uses the game's own recorder and physics, the file needs no conversion. [training/README.md](../training/README.md) has the details.
+
+---
+
+## 9. Where to add things
 
 | You want to add | Where it goes |
 | --- | --- |
-| **Sound** | `audio.js` is an empty class whose methods the game already calls (`update(vehicle)` every frame; `play('bump')`, `play('lap')`). Fill it in with the Web Audio API. |
-| **AI opponents** | `Vehicle` contains no rendering and no input code — you hand it an input object each step. `robotDriver()` in `tools/sim-test.js` is a tiny working AI: aim at a point ahead on the centre line, slow down for curvature. Create more `Vehicle` + `KartModel` pairs and feed them. |
+| **More sounds** | Add a layer in `#buildGraph()` in `audio.js` and drive its volume from `update(vehicle)`; or a one-shot in `play()`. |
+| **AI opponents you can race** | `Vehicle` contains no rendering and no input code — you hand it an input object each step. `robotDriver()` in `tools/sim-test.js` is a tiny working AI, and the trained network in `training/` is a much better one. Create more `Vehicle` + `KartModel` pairs and feed them. |
 | **A gamepad** | Add a source next to `keyboard.js` and merge it in `input/index.js`. |
 | **Items, boosts** | Read the kart's position against the track with `path.nearestIndex()`, like `laps.js` does; apply effects by temporarily changing values the vehicle reads from the config. |
 | **Another circuit** | Change the points in `track/layout.js`; run `npm run sim` to check corner radii and that the robot can still finish a lap. |

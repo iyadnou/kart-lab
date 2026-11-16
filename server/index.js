@@ -1,11 +1,12 @@
 // =============================================================================
 // server/index.js — the one process that `npm run dev` starts.
 //
-// It is a single HTTPS server that does three jobs:
+// It is a single HTTPS server that does four jobs:
 //   1. serves the two web pages:   /            -> the game (open on the Mac)
 //                                  /controller  -> the phone controller
 //   2. in dev mode, lets Vite transform and hot-reload the source files
 //   3. relays WebSocket messages between phone and game (see relay.js)
+//   4. loads and saves ghost lap recordings in ghosts/ (see ghosts.js)
 //
 // Why HTTPS? iPhones only allow a web page to read the tilt sensors on a
 // "secure" page, so plain http:// would not work. We create our own
@@ -23,10 +24,12 @@ import { fileURLToPath } from 'node:url';
 import { getCertificate } from './certificate.js';
 import { getLanAddresses } from './network.js';
 import { attachRelay } from './relay.js';
+import { handleGhostRequest } from './ghosts.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.env.PORT) || 5173;
 const IS_PROD = process.argv.includes('--prod');
+const GHOSTS_DIR = path.join(ROOT, 'ghosts'); // recorded laps, see ghosts.js
 
 // Which HTML file answers which URL.
 const PAGES = {
@@ -52,7 +55,10 @@ if (IS_PROD) {
     console.error('No dist/ folder. Run "npm run build" first, or use "npm run dev".');
     process.exit(1);
   }
-  server.on('request', (req, res) => serveBuiltFile(dist, req, res));
+  server.on('request', (req, res) => {
+    if (handleGhostRequest(GHOSTS_DIR, req, res)) return;
+    serveBuiltFile(dist, req, res);
+  });
 } else {
   // Vite in "middleware mode": it does not open its own server, it just
   // gives us a request handler that we plug into ours.
@@ -67,6 +73,7 @@ if (IS_PROD) {
   });
 
   server.on('request', async (req, res) => {
+    if (handleGhostRequest(GHOSTS_DIR, req, res)) return;
     const pathname = new URL(req.url, 'https://localhost').pathname;
     const page = PAGES[pathname];
     if (!page) {

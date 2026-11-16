@@ -174,6 +174,26 @@ export const CONFIG = {
     skidMarkMaxSegments: 3000,
   },
 
+  // --- Sound (all generated in code, see audio.js) ---------------------------
+  audio: {
+    masterVolume: 0.7, // 0..1, also on the HUD slider (remembered in the browser)
+    muted: false, // also the M key and the HUD button
+    engineVolume: 1.0, // engine + intake roar
+    skidVolume: 1.0, // tyre squeal + grass rumble
+    effectsVolume: 1.0, // wall hits, lap chime
+    // Engine pitch standing still and at top speed. Kept fairly high on
+    // purpose: laptop speakers cannot reproduce tones much below 100 Hz.
+    engineIdleHz: 64,
+    engineTopHz: 250,
+  },
+
+  // --- Ghost karts (see ghost/) ------------------------------------------------
+  ghost: {
+    showPlayer: true, // replay of your own best recorded lap (light blue)
+    showAI: true, // replay of the AI driver's lap (pink)
+    opacity: 0.4, // how solid the ghosts look
+  },
+
   // --- Graphics ------------------------------------------------------------
   graphics: {
     quality: 'high', // 'high' or 'low'

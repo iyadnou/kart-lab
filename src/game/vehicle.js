@@ -93,6 +93,8 @@ export class Vehicle {
     this.forwardSpeed = 0; // m/s, negative when reversing
     this.steerAngle = 0; // current front wheel angle (rad, + = left)
     this.handbrake = false;
+    this.throttle = 0; // latest driver input, 0..1
+    this.brake = 0;
     this.groundedWheels = 0;
     this.upsideDownTime = 0;
 
@@ -186,6 +188,10 @@ export class Vehicle {
     this.prevQuaternion.copy(this.quaternion);
 
     this.handbrake = !!input.handbrake;
+    // Remembered so other modules (engine sound, …) can ask what the driver
+    // is doing without needing the input object.
+    this.throttle = THREE.MathUtils.clamp(input.throttle, 0, 1);
+    this.brake = THREE.MathUtils.clamp(input.brake, 0, 1);
 
     this.#updateSteering(input, dt);
     this.#updateEngineAndBrakes(input, dt);
@@ -441,11 +447,14 @@ export class Vehicle {
   // Other
   // ===========================================================================
 
-  /** Instantly move the kart somewhere, at rest (reset / respawn). */
-  teleport(position, quaternion) {
+  /**
+   * Instantly move the kart somewhere (reset / respawn). It arrives at rest
+   * unless a `velocity` is given (the AI training starts some runs rolling).
+   */
+  teleport(position, quaternion, velocity = { x: 0, y: 0, z: 0 }) {
     this.body.setTranslation(position, true);
     this.body.setRotation(quaternion, true);
-    this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    this.body.setLinvel(velocity, true);
     this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
     this.steerAngle = 0;
     this.upsideDownTime = 0;

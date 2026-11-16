@@ -2,3 +2,11 @@ node_modules/
 dist/
 .cert/
 .DS_Store
+
+# Your own recorded best lap (ghosts/ai.json IS kept in the repository)
+ghosts/player.json
+
+# AI training: Python environment and training results
+training/.venv/
+training/runs/
+__pycache__/

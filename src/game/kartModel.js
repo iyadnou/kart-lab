@@ -173,6 +173,24 @@ export class KartModel {
   }
 
   /**
+   * Place the model directly, without a Vehicle. Ghost karts use this: they
+   * only know a position, a rotation and a speed from their recording.
+   */
+  setPose(position, quaternion, speed, frameDt) {
+    this.group.position.copy(position);
+    this.group.quaternion.copy(quaternion);
+    // Wheels sit where the suspension rests under the kart's own weight,
+    // and spin as fast as the kart moves: angle = distance / radius.
+    const { wheels: w, suspension: s } = this.config;
+    const hang = s.restLength - 0.05;
+    for (const visual of this.wheels) {
+      visual.pivot.position.set(visual.x, w.mountY - hang, visual.z);
+      visual.angle += (speed * frameDt) / w.radius;
+      visual.spin.rotation.x = visual.angle;
+    }
+  }
+
+  /**
    * Copy the physics state onto the model.
    * @param {Vehicle} vehicle
    * @param {number} alpha  0..1, how far we are between the previous and the

@@ -15,8 +15,10 @@
       <div class="panel laps">
         <div class="lap-count">LAP <span id="lap-number">–</span></div>
         <div class="lap-time" id="lap-time">0:00.000</div>
-        <div class="lap-row"><span>LAST</span><span id="lap-last">–:––.–––</span></div>
         <div class="lap-row"><span>BEST</span><span id="lap-best">–:––.–––</span></div>
+        <div class="lap-row"><span>LAST</span><span id="lap-last">–:––.–––</span></div>
+        <!-- The AI ghost's lap time; turns green once your best lap beats it. -->
+        <div class="lap-row" id="ai-row" hidden><span>AI</span><span id="lap-ai">–:––.–––</span></div>
       </div>
 
       <div class="top-right">
@@ -35,7 +37,13 @@
 
       <div class="hints" id="hints">
         <b>↑↓←→ / WASD</b> drive · <b>Space</b> handbrake · <b>R</b> reset · <b>G</b> tuning · <b>C</b> physics view
-        <button id="quality-button" type="button">Quality: High</button>
+        · <b>M</b> mute · <b>H</b> ghosts
+        <div class="hint-buttons">
+          <button id="quality-button" type="button">Quality: High</button>
+          <button id="ghost-button" type="button">Ghosts: On</button>
+          <button id="sound-button" type="button">Sound: On</button>
+          <input id="volume-slider" type="range" min="0" max="100" step="1" title="Master volume" />
+        </div>
       </div>
 
       <div class="toast" id="toast"></div>
@@ -58,6 +66,8 @@
           <p class="lead">Phone connected</p>
           <p class="go">Press GAS to start</p>
         </div>
+        <!-- Browsers keep a page silent until it has been clicked once. -->
+        <p class="sound-hint" id="sound-hint">🔇 Click anywhere on this page once to turn the sound on</p>
       </div>
     </div>
 

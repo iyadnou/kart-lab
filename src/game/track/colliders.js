@@ -5,14 +5,15 @@
 // =============================================================================
 
 import { GROUP } from '../physics.js';
+import { addObstacleColliders } from './obstacles.js';
 
 /**
  * @param {Physics} physics
- * @param {object} geometry  result of buildTrackGeometry()
+ * @param {object} track     result of createTrack()
  * @param {object} config    the CONFIG object
  */
-export function addTrackColliders(physics, geometry, config) {
-  const { road, verges, terrain, wallBoxes } = geometry;
+export function addTrackColliders(physics, track, config) {
+  const { road, verges, terrain, wallBoxes } = track.geometry;
 
   // Triangle meshes: the wheels' rays hit exactly the triangles you see.
   physics.addTrimesh(road.positions, road.indices, { type: 'ground', surface: 'asphalt' });
@@ -29,4 +30,7 @@ export function addTrackColliders(physics, geometry, config) {
       restitution: config.walls.restitution,
     });
   }
+
+  // Tire stacks and gantry posts.
+  addObstacleColliders(physics, track.path, track.obstacles);
 }

@@ -11,7 +11,7 @@ import GUI from 'lil-gui';
 
 // Sections of CONFIG that can be changed while driving, in display order.
 // (`track` is missing on purpose: the track is generated once at start-up.)
-const LIVE_SECTIONS = ['engine', 'steering', 'tires', 'handbrake', 'suspension', 'stability', 'chassis', 'wheels', 'surfaces', 'camera', 'effects'];
+const LIVE_SECTIONS = ['engine', 'steering', 'tires', 'handbrake', 'suspension', 'stability', 'chassis', 'wheels', 'surfaces', 'camera', 'effects', 'audio', 'ghost'];
 
 // Slider ranges where the automatic guess (0 .. 3x the default) is not good.
 const RANGES = {
@@ -27,6 +27,11 @@ const RANGES = {
   'surfaces.asphalt.grip': [0, 2],
   'surfaces.asphalt.drag': [0, 100],
   'surfaces.grass.grip': [0, 2],
+  'audio.masterVolume': [0, 1],
+  'audio.engineVolume': [0, 2],
+  'audio.skidVolume': [0, 2],
+  'audio.effectsVolume': [0, 2],
+  'ghost.opacity': [0.05, 1],
 };
 
 /**
@@ -36,6 +41,7 @@ const RANGES = {
  * @param {() => void} actions.resetKart
  * @param {(quality: string) => void} actions.setQuality
  * @param {(gravity: number) => void} actions.setGravity
+ * @param {() => void} actions.downloadGhost
  */
 export function createTuningPanel(config, actions) {
   const gui = new GUI({ title: 'Tuning (G to hide)', width: 320 });
@@ -48,6 +54,7 @@ export function createTuningPanel(config, actions) {
     'Copy config as JSON': async () => {
       await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
     },
+    'Download my ghost': () => actions.downloadGhost(),
     'Restore defaults': () => {
       restore(config, defaults);
       // Refresh every slider to show the restored values.

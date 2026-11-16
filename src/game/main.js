@@ -26,6 +26,7 @@ import { LapTracker } from './laps.js';
 import { Input } from './input/index.js';
 import { Hud } from './hud.js';
 import { AudioManager } from './audio.js';
+import { GhostSystem } from './ghost/index.js';
 import { DebugView } from './debugView.js';
 import { createTuningPanel } from './tuningPanel.js';
 import { startLoop } from './loop.js';
@@ -42,9 +43,9 @@ async function main() {
   const view = createScene(CONFIG, document.getElementById('view'));
 
   const track = createTrack(CONFIG);
-  addTrackColliders(physics, track.geometry, CONFIG);
+  addTrackColliders(physics, track, CONFIG);
   view.scene.add(createTrackMeshes(track.geometry, view.renderer.capabilities.getMaxAnisotropy()));
-  view.scene.add(createScenery(track, physics, CONFIG));
+  view.scene.add(createScenery(track));
 
   // --- Kart ----------------------------------------------------------------------
   const vehicle = new Vehicle(physics, CONFIG, track.startPose);
@@ -53,15 +54,22 @@ async function main() {
 
   const chaseCamera = new ChaseCamera(view.camera, physics, CONFIG);
   const effects = new Effects(view.scene, CONFIG);
-  const audio = new AudioManager();
+  const audio = new AudioManager(CONFIG);
   const debugView = new DebugView(view.scene, physics);
 
   // --- Rules ---------------------------------------------------------------------
   const laps = new LapTracker(track.path, CONFIG.track.checkpointCount, window.localStorage);
   laps.locate(vehicle.position);
+
+  // --- Ghosts: recorded laps replayed as see-through karts ----------------------------
+  const ghosts = new GhostSystem(view.scene, CONFIG, track.path.length);
+  await ghosts.load(); // ghosts/player.json and ghosts/ai.json, if they exist
+
   laps.onLapComplete = (time, isBest) => {
-    hud.toast(isBest ? `Best lap!  ${formatTime(time)}` : `Lap  ${formatTime(time)}`);
-    audio.play('lap');
+    const ai = ghosts.aiLapTime;
+    if (ai !== null && time < ai) hud.toast(`Faster than the AI!  ${formatTime(time)}`);
+    else hud.toast(isBest ? `Best lap!  ${formatTime(time)}` : `Lap  ${formatTime(time)}`);
+    audio.play(isBest ? 'best' : 'lap');
   };
 
   // --- Input ---------------------------------------------------------------------
@@ -76,7 +84,7 @@ async function main() {
     if (speed < 3 || now - lastRumble < RUMBLE_INTERVAL_MS) return;
     lastRumble = now;
     input.remote.send({ type: 'rumble', ms: Math.round(Math.min(30 + speed * 4, 120)) });
-    audio.play('bump');
+    audio.play('bump', speed / 20); // louder for harder hits
   };
 
   // --- Game state ------------------------------------------------------------------
@@ -95,13 +103,36 @@ async function main() {
 
   // --- Tuning panel and shortcuts -----------------------------------------------------
   const panel = createTuningPanel(CONFIG, {
-    onChange: () => vehicle.applyTuning(),
+    onChange: () => {
+      vehicle.applyTuning();
+      audio.refresh();
+      ghosts.saveSettings();
+      refreshSoundControls();
+      refreshGhostButton();
+    },
     resetKart,
+    downloadGhost: () => ghosts.downloadPlayerGhost(),
     setQuality: (quality) => view.setQuality(quality),
     setGravity: (gravity) => physics.setGravity(gravity),
   });
   input.keyboard.onShortcut('KeyG', () => panel.toggle());
   input.keyboard.onShortcut('KeyC', () => debugView.toggle());
+
+  // Sound and ghost switches: HUD buttons, keys, and the tuning panel all
+  // change the same CONFIG values; the refresh functions keep labels in sync.
+  const refreshSoundControls = hud.bindSoundControls(audio);
+  const refreshGhostButton = hud.bindGhostButton(ghosts);
+  const refreshPanel = () => panel.gui.controllersRecursive().forEach((controller) => controller.updateDisplay());
+  input.keyboard.onShortcut('KeyM', () => {
+    audio.toggleMute();
+    refreshSoundControls();
+    refreshPanel();
+  });
+  input.keyboard.onShortcut('KeyH', () => {
+    ghosts.setEnabled(!ghosts.enabled);
+    refreshGhostButton();
+    refreshPanel();
+  });
   hud.bindQualityButton(CONFIG.graphics.quality, () => {
     CONFIG.graphics.quality = CONFIG.graphics.quality === 'low' ? 'high' : 'low';
     view.setQuality(CONFIG.graphics.quality);
@@ -120,6 +151,11 @@ async function main() {
       if (driverInput.throttle > 0.1) {
         started = true;
         audio.unlock();
+        // Started from the phone without ever touching this page? Then the
+        // browser is still blocking sound; say how to fix it.
+        setTimeout(() => {
+          if (audio.blocked && !audio.muted) hud.toast('🔇 Click the game window once for sound', { ms: 6000 });
+        }, 700);
       } else {
         driverInput = NO_INPUT;
       }
@@ -132,6 +168,7 @@ async function main() {
     vehicle.postStep(dt);
 
     laps.update(vehicle.position, dt);
+    ghosts.step(vehicle, laps); // record this lap; keep it if it is my fastest
     effects.step(vehicle, dt);
 
     // Automatic rescue: upside down for too long, or fallen off the world.
@@ -153,6 +190,9 @@ async function main() {
     chaseCamera.update(kartModel.group, vehicle, frameDt);
     view.followWithShadow(kartModel.group.position);
     effects.update(frameDt, view.camera, view.renderer.domElement.height);
+    // The lap clock, blended like the kart, so ghosts move smoothly too.
+    const ghostTime = laps.lapTime - (1 - alpha) * CONFIG.physics.timestep;
+    ghosts.render(ghostTime, laps.lap > 0, kartModel.group.position, frameDt);
     audio.update(vehicle);
     debugView.update();
 
@@ -165,7 +205,7 @@ async function main() {
     }
     phoneWasConnected = phoneConnected;
 
-    hud.update({ speedKmh: vehicle.speedKmh, laps, phoneConnected, started });
+    hud.update({ speedKmh: vehicle.speedKmh, laps, phoneConnected, started, aiLapTime: ghosts.aiLapTime });
     view.renderer.render(view.scene, view.camera);
   }
 
@@ -173,7 +213,7 @@ async function main() {
   startLoop({ timestep: CONFIG.physics.timestep, step, render });
 
   // Handy for experiments in the browser console, e.g. `game.vehicle.speedKmh`.
-  window.game = { CONFIG, physics, view, track, vehicle, kartModel, chaseCamera, laps, input, hud, resetKart };
+  window.game = { CONFIG, physics, view, track, vehicle, kartModel, chaseCamera, laps, input, hud, audio, ghosts, resetKart };
 }
 
 main().catch((error) => {
