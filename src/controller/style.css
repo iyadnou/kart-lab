@@ -1,0 +1,371 @@
+/* Styles for the phone controller. Designed for landscape, thumbs on the sides. */
+
+:root {
+  --ink: #f4f6f8;
+  --bg: #0d1117;
+  --panel: #1a212b;
+  --accent: #ff8a2a;
+  --good: #3ddc84;
+  --warn: #ffc94d;
+  --bad: #ff5d5d;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  overflow: hidden; /* no scrolling */
+  overscroll-behavior: none; /* no pull-to-refresh / rubber banding */
+  position: fixed; /* iOS: really, no scrolling */
+  inset: 0;
+}
+
+/* A game controller must not select text, show callouts or zoom. */
+* {
+  box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none; /* we handle every touch ourselves */
+}
+
+/* ---- Layout ----------------------------------------------------------------
+   A 3-column grid: left pad | centre | right pad, with a bar on top.         */
+
+#app {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh; /* "dynamic" height: excludes the browser's toolbars */
+  display: grid;
+  grid-template-columns: 1fr minmax(120px, 0.8fr) 1fr;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'top top top'
+    'left centre right';
+  gap: 10px;
+  /* Keep clear of notches and rounded corners. */
+  padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+}
+
+/* Phone upright (or rotation locked): rotate the whole UI a quarter turn, so
+   it is the right way up when the phone is held sideways (top to the left). */
+@media (orientation: portrait) {
+  #app {
+    left: 100vw;
+    width: 100vh;
+    width: 100dvh;
+    height: 100vw;
+    transform-origin: top left;
+    transform: rotate(90deg);
+  }
+}
+
+/* ---- Top bar ------------------------------------------------------------- */
+
+.top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.status .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--bad);
+}
+.status.waiting .dot {
+  background: var(--warn);
+}
+.status.ready .dot {
+  background: var(--good);
+}
+
+/* A bar with a dot that shows the steering value from full left to full right. */
+.steer-indicator {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+.steer-track {
+  position: relative;
+  width: min(100%, 260px);
+  height: 10px;
+  border-radius: 5px;
+  background: var(--panel);
+}
+.steer-track::after {
+  /* centre tick */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  width: 2px;
+  height: 16px;
+  margin-left: -1px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.steer-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border-radius: 50%;
+  background: var(--accent);
+  z-index: 1;
+}
+
+.top-buttons {
+  display: flex;
+  gap: 8px;
+}
+.small-button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 8px 14px;
+}
+.small-button:active {
+  background: #2a3442;
+}
+
+/* ---- Big hold buttons ---------------------------------------------------- */
+
+.pad {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.pad.left {
+  grid-area: left;
+}
+.pad.right {
+  grid-area: right;
+}
+
+.hold-button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 22px;
+  font-size: clamp(20px, 5vmin, 34px);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: #fff;
+  border: 3px solid rgba(255, 255, 255, 0.14);
+  transition: transform 0.05s, filter 0.05s;
+}
+.hold-button small {
+  font-size: 0.42em;
+  font-weight: 600;
+  opacity: 0.75;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+/* `.pressed` is set from JavaScript (see buttons.js), not :active, because
+   :active is unreliable with several fingers down at once. */
+.hold-button.pressed {
+  transform: scale(0.97);
+  filter: brightness(1.45);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.gas {
+  background: linear-gradient(160deg, #1f9d55, #14713c);
+}
+.brake {
+  background: linear-gradient(160deg, #c2372f, #8e2520);
+  flex: 1.5;
+}
+.handbrake {
+  background: linear-gradient(160deg, #2f6fc2, #214f8e);
+  flex: 1;
+  font-size: clamp(16px, 4vmin, 26px);
+}
+
+/* ---- Centre column ------------------------------------------------------- */
+
+.centre {
+  grid-area: centre;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 0;
+}
+
+/* A tiny steering wheel that rotates with your tilt. */
+.wheel {
+  position: relative;
+  height: min(46%, 130px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 9px solid #39424f;
+  margin-top: 6px;
+}
+.wheel-spoke {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 9px;
+  margin-top: -4.5px;
+  background: #39424f;
+}
+.wheel-mark {
+  /* the coloured mark at the top of the wheel */
+  position: absolute;
+  left: 50%;
+  top: -9px;
+  width: 12px;
+  height: 9px;
+  margin-left: -6px;
+  background: var(--accent);
+}
+
+.reset {
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 12px 6px;
+  font-size: 13px;
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--ink);
+}
+
+/* Fallback slider */
+.slider {
+  position: relative;
+  width: 100%;
+  height: 64px;
+  border-radius: 32px;
+  background: var(--panel);
+  border: 2px solid rgba(255, 255, 255, 0.14);
+}
+.slider-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  background: var(--accent);
+  pointer-events: none;
+}
+.slider-label {
+  position: absolute;
+  bottom: -20px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* ---- Settings sheet -------------------------------------------------------- */
+
+.settings {
+  position: absolute;
+  top: 56px;
+  right: 14px;
+  z-index: 5;
+  width: min(320px, 70%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #232c38;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  font-size: 14px;
+}
+.settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.settings input,
+.settings select {
+  touch-action: auto; /* native controls need their normal touch behaviour */
+  font: inherit;
+  width: 100%;
+}
+
+/* ---- Start overlay ----------------------------------------------------------- */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(13, 17, 23, 0.96);
+  text-align: center;
+  padding: 20px;
+}
+.overlay h1 {
+  margin: 0;
+  font-size: 34px;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+.overlay p {
+  margin: 4px 0 14px;
+  opacity: 0.85;
+}
+.overlay button {
+  font: inherit;
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(160deg, #1f9d55, #14713c);
+  border: 0;
+  border-radius: 18px;
+  padding: 18px 44px;
+}
+.overlay .note {
+  font-size: 13px;
+  color: var(--warn);
+  min-height: 1.2em;
+  margin-top: 12px;
+}
+
+[hidden] {
+  display: none !important;
+}

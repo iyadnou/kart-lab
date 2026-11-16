@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kart Lab</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <!-- The 3D view. Three.js draws into this canvas. -->
+    <canvas id="view"></canvas>
+
+    <!-- The HUD is ordinary HTML laid on top of the canvas (see src/game/hud.js). -->
+    <div id="hud">
+      <div class="panel laps">
+        <div class="lap-count">LAP <span id="lap-number">–</span></div>
+        <div class="lap-time" id="lap-time">0:00.000</div>
+        <div class="lap-row"><span>LAST</span><span id="lap-last">–:––.–––</span></div>
+        <div class="lap-row"><span>BEST</span><span id="lap-best">–:––.–––</span></div>
+      </div>
+
+      <div class="top-right">
+        <div class="pill" id="connection"><span class="dot"></span><span id="connection-text">No phone</span></div>
+        <!-- Small QR code, shown while driving without a phone. -->
+        <div class="panel qr-card" id="qr-card">
+          <canvas id="qr-small"></canvas>
+          <div>Scan to connect<br />your phone</div>
+        </div>
+      </div>
+
+      <div class="speed">
+        <span id="speed-value">0</span>
+        <span class="unit">km/h</span>
+      </div>
+
+      <div class="hints" id="hints">
+        <b>↑↓←→ / WASD</b> drive · <b>Space</b> handbrake · <b>R</b> reset · <b>G</b> tuning · <b>C</b> physics view
+        <button id="quality-button" type="button">Quality: High</button>
+      </div>
+
+      <div class="toast" id="toast"></div>
+    </div>
+
+    <!-- Start screen -->
+    <div id="start-screen">
+      <div class="start-card">
+        <h1>KART LAB</h1>
+        <div id="start-waiting">
+          <p class="lead">Scan to connect your phone</p>
+          <canvas id="qr-large"></canvas>
+          <p class="url" id="controller-url">starting…</p>
+          <p class="small">
+            Phone and Mac must be on the same Wi-Fi. Accept the certificate warning, then tap Start.<br />
+            No phone? Press <b>↑</b> or <b>W</b> to drive with the keyboard.
+          </p>
+        </div>
+        <div id="start-ready" hidden>
+          <p class="lead">Phone connected</p>
+          <p class="go">Press GAS to start</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="loading">Building the track…</div>
+
+    <script type="module" src="/src/game/main.js"></script>
+  </body>
+</html>

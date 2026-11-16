@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- No zooming, and use the whole screen including the notch area. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <!-- If the page is added to the home screen, open it without browser bars. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#0d1117" />
+    <title>Kart Lab Controller</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <!--
+      Everything lives in #app. It is laid out for LANDSCAPE. If the phone is
+      held in portrait (or rotation is locked), CSS rotates #app by 90° so it
+      still looks right when you turn the phone sideways.
+    -->
+    <div id="app">
+      <!-- Top bar: status, steering indicator, small buttons -->
+      <header class="top">
+        <div class="status" id="status"><span class="dot"></span><span id="status-text">Connecting…</span></div>
+
+        <div class="steer-indicator" aria-hidden="true">
+          <div class="steer-track"><div class="steer-dot" id="steer-dot"></div></div>
+        </div>
+
+        <div class="top-buttons">
+          <button class="small-button" id="calibrate" type="button">Calibrate</button>
+          <button class="small-button" id="settings-toggle" type="button">Settings</button>
+        </div>
+      </header>
+
+      <!-- Left hand: brake and handbrake -->
+      <div class="pad left">
+        <div class="hold-button handbrake" id="handbrake">HAND<wbr />BRAKE<small>drift</small></div>
+        <div class="hold-button brake" id="brake">BRAKE<small>reverse</small></div>
+      </div>
+
+      <!-- Centre: a little steering wheel that mirrors your tilt, and RESET -->
+      <div class="centre">
+        <div class="wheel" id="wheel"><div class="wheel-spoke"></div><div class="wheel-mark"></div></div>
+
+        <!-- Fallback steering slider, shown only when there is no tilt sensor -->
+        <div class="slider" id="slider" hidden>
+          <div class="slider-knob" id="slider-knob"></div>
+          <span class="slider-label">slide to steer</span>
+        </div>
+
+        <div class="hold-button reset" id="reset">RESET KART</div>
+      </div>
+
+      <!-- Right hand: gas -->
+      <div class="pad right">
+        <div class="hold-button gas" id="gas">GAS</div>
+      </div>
+
+      <!-- Settings sheet -->
+      <div class="settings" id="settings" hidden>
+        <label>
+          Steering sensitivity
+          <input id="sensitivity" type="range" min="0" max="100" step="1" />
+        </label>
+        <label>
+          Steering mode
+          <select id="mode">
+            <option value="tilt">Tilt the phone</option>
+            <option value="slider">On-screen slider</option>
+          </select>
+        </label>
+        <button class="small-button" id="settings-close" type="button">Done</button>
+      </div>
+
+      <!-- Start overlay: the tap is needed to ask iOS for sensor permission -->
+      <div class="overlay" id="start-overlay">
+        <h1>KART LAB</h1>
+        <p>Hold your phone sideways like a steering wheel.</p>
+        <button id="start" type="button">Tap to start</button>
+        <p class="note" id="start-note"></p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/controller/main.js"></script>
+  </body>
+</html>
